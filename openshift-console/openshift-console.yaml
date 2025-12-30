@@ -1,0 +1,69 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openshift-console-cluster-role-binding
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: openshift-console
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openshift-console-deployment
+  namespace: kube-system
+  labels:
+    app: openshift-console
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openshift-console
+  template:
+    metadata:
+      labels:
+        app: openshift-console
+    spec:
+      securityContext:
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      containers:
+      - name: openshift-console-app
+        image: quay.io/openshift/origin-console:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        env:
+        - name: BRIDGE_USER_AUTH
+          value: disabled
+        - name: BRIDGE_K8S_MODE
+          value: off-cluster
+        - name: BRIDGE_K8S_MODE_OFF_CLUSTER_ENDPOINT
+          value: https://api.crc.testing:6443
+        - name: BRIDGE_K8S_MODE_OFF_CLUSTER_SKIP_VERIFY_TLS
+          value: "true"
+        - name: BRIDGE_K8S_AUTH
+          value: bearer-token
+        - name: BRIDGE_K8S_AUTH_BEARER_TOKEN
+          value: "eyJhbGciOiJSUzI1NiIsImtpZCI6IllybVZXSXphYjJUWWdzTVR3eXM0STB2LWdReHBVZU5USlNJYlY4TFdabFUifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjIl0sImV4cCI6MTc2NzExMTAyNCwiaWF0IjoxNzY3MTA3NDI0LCJpc3MiOiJodHRwczovL2t1YmVybmV0ZXMuZGVmYXVsdC5zdmMiLCJqdGkiOiI5MDQyNjRlMC03YWM5LTQ5OTQtYTdiYi02YjczNjM5ZjczMzAiLCJrdWJlcm5ldGVzLmlvIjp7Im5hbWVzcGFjZSI6Imt1YmUtc3lzdGVtIiwic2VydmljZWFjY291bnQiOnsibmFtZSI6Im9wZW5zaGlmdC1jb25zb2xlIiwidWlkIjoiYjYyMjE3ZmYtZTRmZi00YTRjLTliZTktOWQ0OWE5MjM5MGE2In19LCJuYmYiOjE3NjcxMDc0MjQsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDprdWJlLXN5c3RlbTpvcGVuc2hpZnQtY29uc29sZSJ9.VAl1-hJwayVGs36rlVRQzg8AI_BwgQUsikDhKKcUf9vAmjtmN45Mj06-gC57GIdZaMm_D5QQNcvHyimLzoZt7epAQ4nZNDdMU661LKdAuyQPpDT8qP6Tlf9y3IYaoFqfQEbZt5KvhhJu0o63jtGWiLOKZ6yaLbEi8pssO6zkgkaxpBm0p4ZUVX3E5GuGCEnDaB9-fnmT970rKGCeFruG4oUIGHrh2yWCtgPJi1gIazTBDFrQPgoQmHHKKoH6JBexvMod7miv0b-163ssLAqLPB1w53Y1i1bE3vX4sL2IRNLUDtUmZY_o40VdlqF9AF8imgGX7KE9IFJlvEVnlVtyxQ"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openshift-console-service
+  namespace: kube-system
+spec:
+  selector:
+    app: openshift-console
+  ports:
+  - port: 9000
+    targetPort: 9000
+  type: LoadBalancer
